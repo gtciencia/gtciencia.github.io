@@ -1,0 +1,273 @@
+/* Minimal, compatible with themes like al-folio (Jekyll).
+   No hard-coded colors: uses current text color and simple borders. */
+
+.match-app{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.2rem;
+  align-items:start;
+}
+
+@media (max-width: 900px){
+  .match-app{ grid-template-columns: 1fr; }
+  .filters{ position: static; }
+}
+
+.filters{
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.filters h2{
+  margin: 0 0 0.8rem 0;
+}
+
+.block{
+  margin: 0 0 1rem 0;
+}
+
+.block-title{
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.hint{
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0.35rem 0 0 0;
+}
+
+.radio-row{
+  display:flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.facet{
+  display:flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow:auto;
+  padding-right: 0.25rem;
+}
+
+.facet .facet-item{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.facet label{
+  display:flex;
+  gap: 0.45rem;
+  align-items:center;
+  cursor:pointer;
+}
+
+.facet .count{
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.actions{
+  display:flex;
+  gap: 0.5rem;
+}
+
+#clearFilters{
+  width: 100%;
+}
+
+.submit{
+  border-top: 1px solid rgba(0,0,0,0.12);
+  padding-top: 0.9rem;
+}
+
+.submit-title{
+  margin: 0 0 0.4rem 0;
+  font-weight: 600;
+}
+
+.submit-link{
+  display:inline-block;
+  margin-bottom: 0.4rem;
+}
+
+.results-header{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+
+.cards{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+@media (max-width: 900px){
+  .cards{ grid-template-columns: 1fr; }
+}
+
+.card{
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.card-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.card .name{
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.badge{
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.summary{
+  margin: 0.45rem 0 0.6rem 0;
+  opacity: 0.95;
+}
+
+.tags{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0.6rem 0;
+}
+
+.tag{
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.materials{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.materials a{
+  text-decoration: underline;
+}
+
+.card-actions{
+  margin-top: 0.65rem;
+  display:flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.card-actions button{
+  font-size: 0.9rem;
+}
+
+.empty{
+  border: 1px dashed rgba(0,0,0,0.22);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+/* Modal */
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 1rem;
+  z-index: 9999;
+}
+
+.modal{
+  background: var(--global-bg-color, white);
+  color: var(--global-text-color, black);
+  width: min(920px, 100%);
+  max-height: 85vh;
+  overflow:auto;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.modal h3{
+  margin: 0 0 0.4rem 0;
+}
+
+.modal .modal-top{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+
+.modal .close{
+  font-size: 1rem;
+}
+
+.match-list{
+  list-style:none;
+  padding:0;
+  margin: 0.6rem 0 0 0;
+  display:flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.match-item{
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.match-item .row{
+  display:flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: baseline;
+}
+
+.match-item .title{
+  font-weight: 650;
+}
+
+.match-item .score{
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.match-item .why{
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
+  opacity: 0.9;
+}
