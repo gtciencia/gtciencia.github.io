@@ -183,7 +183,8 @@
     const videos = extractUrls(pick(row, ['Vídeos', 'Videos', 'Video', 'YouTube', 'Vimeo'])).map(safeUrl).filter(Boolean);
     const links = extractUrls(pick(row, ['Enlaces', 'Links', 'Material', 'MATERIAL'])).map(safeUrl).filter(Boolean);
 
-    const id = String(pick(row, ['ID', 'Id', 'id', 'Timestamp', 'Marca temporal', 'Marca temporal (timestamp)'])) || `row-${idx}`;
+    const idRaw = pick(row, ['ID', 'Id', 'id', 'Timestamp', 'Marca temporal', 'Marca temporal (timestamp)']);
+    const id = String(idRaw || '').trim() || `row-${idx}`;
 
     return {
       id,
@@ -559,6 +560,16 @@
       const items = rows
         .map((r, i) => toItem(r, i))
         .filter((x) => x.name || x.summary); // quita filas vacías
+
+      // Si no hay entradas todavía, no inicializamos List.js (si no, lanza error).
+      if (items.length === 0) {
+        state.data = [];
+        state.byId = new Map();
+        els.count.textContent = '0';
+        els.empty.hidden = false;
+        // También deja el botón del form visible para que puedan enviar la primera ficha
+        return;
+      }
 
       state.data = items;
       state.byId = new Map(items.map((x) => [x.id, x]));
