@@ -166,16 +166,16 @@
 
   function toItem(row, idx) {
     // Mapeo flexible de columnas (ajusta si tu Form usa otros nombres)
-    const type = normalizeType(pick(row, ['Tipo', 'type', 'TYPE', 'Entidad', 'Entity']));
-    const name = String(pick(row, ['Nombre', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'])).trim();
-    const summary = String(pick(row, ['Resumen', 'Descripción', 'Descripcion', 'Description', 'DESCRIPTION'])).trim();
+    const type = normalizeType(pick(row, ['Tipo', 'Eres...', 'TYPE', 'Entidad', 'Entity']));
+    const name = String(pick(row, ['Nombre de la entidad', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'])).trim();
+    const summary = String(pick(row, ['Resumen', 'Descripción', 'Descripcion', 'Description', 'Resumen corto de actividades (máx. 1200 caracteres)'])).trim();
 
     const tematica = splitTags(pick(row, [
       'Keywords temática', 'Keywords tematica', 'Temática', 'Tematica', 'THEMATIC', 'TAGS', 'Tags'
     ]));
 
     const convo = splitTags(pick(row, [
-      'Keywords convocatorias', 'Convocatorias', 'Calls', 'CALLS', 'Funding', 'Programas'
+      'Keywords convocatoria', 'Convocatorias', 'Calls', 'CALLS', 'Funding', 'Programas'
     ]));
 
     const pdf = safeUrl(String(pick(row, ['PDF', 'Pdf', 'PDF link', 'Material PDF', 'Brochure', 'BROCHURE'])).trim());
