@@ -23,8 +23,8 @@
 }
 
 /* Colores por tipo */
-.card--grupo { border-left: 4px solid #2b6cb0; }
-.card--empresa { border-left: 4px solid #2f855a; }
+.card--grupo { border-left: 4px solid #003f6f; }
+.card--empresa { border-left: 4px solid #f39700; }
 
 .filters{
   border: 1px solid rgba(0,0,0,0.12);
@@ -152,12 +152,12 @@
 }
 
 .badge--grupo {
-  background: #ebf8ff;
-  color: #2b6cb0;
+  background: rgba(0, 63, 111, 0.08);
+  color: #003f6f;
 }
 .badge--empresa {
-  background: #f0fff4;
-  color: #2f855a;
+  background: rgba(243, 151, 0, 0.15);
+  color: #7a4700;
 }
 
 .item-badge {
@@ -176,10 +176,12 @@
 
 /* Enlace al detalle */
 .detail-link {
+  color: #003f6f;
   text-decoration: none;
 }
 
 .detail-link:hover {
+  color: #f39700;  
   text-decoration: underline;
 }
 
@@ -200,12 +202,21 @@
 }
 
 .tag{
-  border: 1px solid rgba(0,0,0,0.18);
+  background: #f5f7fa;
+  color: #003f6f;
+  border: 1px solid rgba(0, 63, 111, 0.15);
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
   font-size: 0.85rem;
   cursor: pointer;
   user-select: none;
+}
+
+.tag:hover {
+  background: rgba(243, 151, 0, 0.12);
+  border-color: #f39700;
+  color: #7a4700;
+  cursor: pointer;
 }
 
 .materials{
@@ -218,6 +229,12 @@
 
 .materials a{
   text-decoration: underline;
+  color: #003f6f;
+  font-weight: 500;  
+}
+
+.materials a:hover {
+  color: #f39700;
 }
 
 .card-actions{
@@ -311,4 +328,69 @@
   margin-top: 0.35rem;
   font-size: 0.92rem;
   opacity: 0.9;
+}
+
+/* ---------------------------
+   BOTONES
+   --------------------------- */
+
+button,
+.submit-link {
+  background: #003f6f;
+  color: #fff;
+  border-radius: 4px;
+}
+
+button:hover,
+.submit-link:hover {
+  background: #f39700;
+  color: #000;
+}
+
+/* Botón limpiar filtros */
+#clearFilters {
+  background: transparent;
+  color: #003f6f;
+  border: 1px solid #003f6f;
+}
+
+#clearFilters:hover {
+  background: #f39700;
+  border-color: #f39700;
+  color: #000;
+}
+
+/* ---------------------------
+   PÁGINA DE DETALLE
+   --------------------------- */
+
+.item-badge.grupo {
+  background: rgba(0, 63, 111, 0.1);
+  color: #003f6f;
+}
+
+.item-badge.empresa {
+  background: rgba(243, 151, 0, 0.18);
+  color: #7a4700;
+}
+
+.item-summary h3,
+.item-tags h3,
+.item-links h3 {
+  color: #003f6f;
+  border-bottom: 2px solid rgba(0, 63, 111, 0.15);
+  padding-bottom: 4px;
+}
+
+/* ---------------------------
+   CABECERAS DE COLUMNAS
+   --------------------------- */
+
+.col-title {
+  color: #003f6f;
+}
+
+.col-title span {
+  color: #f39700;
+  font-weight: 600;
 }

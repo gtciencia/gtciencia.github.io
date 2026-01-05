@@ -14,7 +14,7 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
 
 <div id="matchapp"
      class="match-app"
-     data-csv-url="TU_URL_CSV"
+     data-csv-url="https://docs.google.com/spreadsheets/d/e/2PACX-1vQeIaaWFgqIGzpKk4tOBTU0bAoE8A_Vwf01W4i-k7E8zJfOMVqhTVzffTaDmSIntZAF-b0yyyYv0b2S/pub?output=csv"
      data-form-url="https://forms.gle/yRAZqbp4tGaTmLaq7"
      data-detail-url="{{ '/match/item/' | relative_url }}">
 
