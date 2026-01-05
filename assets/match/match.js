@@ -10,15 +10,19 @@
   const CSV_URL = (root.dataset.csvUrl || '').trim();
   const FORM_URL = (root.dataset.formUrl || '').trim();
 
+  const DETAIL_URL = (root.dataset.detailUrl || '').trim();
+
   const els = {
     formLink: document.getElementById('formLink'),
-    cards: document.getElementById('cards'),
+    cardsGrupos: document.getElementById('cards-grupos'),
+    cardsEmpresas: document.getElementById('cards-empresas'),
     count: document.getElementById('count'),
+    countGrupos: document.getElementById('count-grupos'),
+    countEmpresas: document.getElementById('count-empresas'),
     empty: document.getElementById('emptyState'),
     facetTem: document.getElementById('facet-tematica'),
     facetCon: document.getElementById('facet-convo'),
     clear: document.getElementById('clearFilters'),
-    typeRadios: Array.from(document.querySelectorAll('input[name="type"]')),
   };
 
   if (els.formLink && FORM_URL) els.formLink.href = FORM_URL;
@@ -34,10 +38,9 @@
   const state = {
     data: [],
     byId: new Map(),
-    list: null,
+    lists: { grupos: null, empresas: null },
     filters: {
-      type: 'all',          // all|grupo|empresa
-      tematica: new Set(),  // tags seleccionadas
+      tematica: new Set(),
       convo: new Set(),
     },
   };
@@ -168,7 +171,12 @@
     // Mapeo flexible de columnas (ajusta si tu Form usa otros nombres)
     const type = normalizeType(pick(row, ['Tipo', 'Eres...', 'TYPE', 'Entidad', 'Entity']));
     const name = String(pick(row, ['Nombre de la entidad', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'])).trim();
-    const summary = String(pick(row, ['Resumen', 'Descripción', 'Descripcion', 'Description', 'Resumen corto de actividades (máx. 1200 caracteres)'])).trim();
+    const summaryLong = String(pick(row, [
+      'Resumen corto de actividades (máx. 1200 caracteres)',
+      'Resumen corto de actividades (máx. 1200 caracteres).',
+      'Resumen corto de actividades',
+      'Resumen'
+    ])).trim();
 
     const tematica = splitTags(pick(row, [
       'Keywords temática', 'Keywords tematica', 'Temática', 'Tematica', 'THEMATIC', 'TAGS', 'Tags'
@@ -190,7 +198,7 @@
       id,
       type: (type === 'unknown' ? 'grupo' : type), // valor por defecto si el form no lo recoge
       name,
-      summary,
+      summaryLong,
       tematica,
       convo,
       pdf,
@@ -201,79 +209,42 @@
     };
   }
 
-  function renderCards(items) {
-    els.cards.innerHTML = '';
+  function renderCards(items, container, type) {
+    container.innerHTML = '';
 
     for (const it of items) {
       const li = document.createElement('li');
-      li.className = 'card';
+      li.className = `card card--${it.type}`; // <-- para colores
       li.dataset.type = it.type;
       li.dataset.tematica = it.tematica.join('|');
       li.dataset.convo = it.convo.join('|');
       li.dataset.id = it.id;
 
-      // Header
       const header = document.createElement('div');
       header.className = 'card-header';
 
       const h = document.createElement('h3');
       h.className = 'name';
-      h.textContent = it.name || '(sin nombre)';
+
+      // enlace a detalle
+      const a = document.createElement('a');
+      a.href = DETAIL_URL ? `${DETAIL_URL}?id=${encodeURIComponent(it.id)}` : '#';
+      a.textContent = it.name || '(sin nombre)';
+      a.className = 'detail-link';
+      h.appendChild(a);
 
       const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = it.type === 'empresa' ? 'Empresa' : (it.type === 'grupo' ? 'Grupo' : it.type);
+      badge.className = `badge badge--${it.type}`;
+      badge.textContent = it.type === 'empresa' ? 'Empresa' : 'Grupo';
 
       header.appendChild(h);
       header.appendChild(badge);
 
-      // Summary
       const p = document.createElement('p');
       p.className = 'summary';
-      p.textContent = it.summary || '';
+      p.textContent = truncate(it.summaryLong || it.summary || '', 260);
 
-      // Tags
-      const tags = document.createElement('div');
-      tags.className = 'tags';
-
-      for (const t of it.tematica.slice(0, 12)) {
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = t;
-        tag.title = 'Alternar filtro: temática';
-        tag.addEventListener('click', () => toggleFacet('tematica', t, !state.filters.tematica.has(t)));
-        tags.appendChild(tag);
-      }
-
-      for (const c of it.convo.slice(0, 8)) {
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = c;
-        tag.title = 'Alternar filtro: convocatoria';
-        tag.addEventListener('click', () => toggleFacet('convo', c, !state.filters.convo.has(c)));
-        tags.appendChild(tag);
-      }
-
-      // Material links
-      const mats = document.createElement('div');
-      mats.className = 'materials';
-
-      if (it.web) mats.appendChild(linkEl('Web', it.web));
-      if (it.pdf) mats.appendChild(linkEl('PDF', it.pdf));
-      for (const v of it.videos.slice(0, 2)) mats.appendChild(linkEl('Vídeo', v));
-      for (const u of it.links.slice(0, 2)) mats.appendChild(linkEl('Enlace', u));
-
-      // Actions
-      const actions = document.createElement('div');
-      actions.className = 'card-actions';
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = 'Ver matches';
-      btn.addEventListener('click', () => openMatchModal(it.id));
-      actions.appendChild(btn);
-
-      // Hidden fields for List.js search (valueNames)
+      // hidden fields para búsqueda
       const hiddenTem = document.createElement('span');
       hiddenTem.className = 'keywords_tematica';
       hiddenTem.hidden = true;
@@ -284,18 +255,15 @@
       hiddenCon.hidden = true;
       hiddenCon.textContent = it.convo.join(' ');
 
-      // Assemble
       li.appendChild(header);
       li.appendChild(p);
-      if (it.tematica.length || it.convo.length) li.appendChild(tags);
-      if (it.web || it.pdf || it.videos.length || it.links.length) li.appendChild(mats);
-      li.appendChild(actions);
       li.appendChild(hiddenTem);
       li.appendChild(hiddenCon);
 
-      els.cards.appendChild(li);
+      container.appendChild(li);
     }
   }
+
 
   function linkEl(label, href) {
     const a = document.createElement('a');
@@ -401,155 +369,58 @@
   }
 
   function applyFilters() {
-    if (!state.list) return;
-
     const f = state.filters;
 
-    state.list.filter((item) => {
+    const predicate = (item) => {
       const el = item.elm;
-      const type = el.dataset.type || 'unknown';
-
-      if (f.type !== 'all' && type !== f.type) return false;
-
       const tem = (el.dataset.tematica || '').split('|').filter(Boolean);
       const con = (el.dataset.convo || '').split('|').filter(Boolean);
 
       if (!hasIntersection(tem, f.tematica)) return false;
       if (!hasIntersection(con, f.convo)) return false;
-
       return true;
-    });
+    };
+
+    state.lists.grupos?.filter(predicate);
+    state.lists.empresas?.filter(predicate);
 
     updateCountAndEmpty();
   }
 
   function clearFilters() {
-    state.filters.type = 'all';
     state.filters.tematica.clear();
     state.filters.convo.clear();
 
-    // Reset UI
-    els.typeRadios.forEach((r) => { r.checked = (r.value === 'all'); });
-
     root.querySelectorAll('.facet input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
 
-    // Clear search
     const q = document.getElementById('q');
     if (q) q.value = '';
 
-    if (state.list) {
-      state.list.search('');
-      state.list.filter(); // remove filters
-    }
+    state.lists.grupos?.search('');
+    state.lists.empresas?.search('');
+    state.lists.grupos?.filter();
+    state.lists.empresas?.filter();
+
     updateCountAndEmpty();
   }
 
   function updateCountAndEmpty() {
-    if (!state.list) return;
-    const n = state.list.matchingItems?.length ?? 0;
+    const ng = state.lists.grupos?.matchingItems?.length ?? 0;
+    const ne = state.lists.empresas?.matchingItems?.length ?? 0;
+    const n = ng + ne;
+
     els.count.textContent = String(n);
+    els.countGrupos.textContent = String(ng);
+    els.countEmpresas.textContent = String(ne);
     els.empty.hidden = n !== 0;
   }
 
-  // ---------- Matching modal ----------
-
-  function openMatchModal(sourceId) {
-    const src = state.byId.get(sourceId);
-    if (!src) return;
-
-    const targetType = src.type === 'empresa' ? 'grupo' : 'empresa';
-    const candidates = state.data.filter((x) => x.type === targetType);
-
-    const scored = candidates
-      .map((x) => {
-        const t = jaccard(src.tematica, x.tematica);
-        const c = jaccard(src.convo, x.convo);
-        const score = 0.7 * t + 0.3 * c;
-        return {
-          item: x,
-          score,
-          commonTem: commonTags(src.tematica, x.tematica, 6),
-          commonCon: commonTags(src.convo, x.convo, 6),
-        };
-      })
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) backdrop.remove();
-    });
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-
-    const top = document.createElement('div');
-    top.className = 'modal-top';
-
-    const title = document.createElement('div');
-    title.innerHTML = `<h3>Matches para: ${escapeHtml(src.name)}</h3>
-                       <div class="hint">Buscando ${escapeHtml(targetType)}s con solape en keywords.</div>`;
-
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'close';
-    close.textContent = 'Cerrar';
-    close.addEventListener('click', () => backdrop.remove());
-
-    top.appendChild(title);
-    top.appendChild(close);
-
-    const body = document.createElement('div');
-
-    if (!scored.length) {
-      body.innerHTML = `<p><strong>No hay matches claros aún.</strong></p>
-                        <p class="hint">Sugerencia: anima a usar un vocabulario controlado de keywords (lista cerrada) para mejorar el solape.</p>`;
-    } else {
-      const ul = document.createElement('ul');
-      ul.className = 'match-list';
-
-      scored.slice(0, 12).forEach((m) => {
-        const li = document.createElement('li');
-        li.className = 'match-item';
-
-        const row = document.createElement('div');
-        row.className = 'row';
-
-        const left = document.createElement('div');
-        left.className = 'title';
-        left.textContent = m.item.name;
-
-        const right = document.createElement('div');
-        right.className = 'score';
-        right.textContent = `score ${fmtScore(m.score)}`;
-
-        row.appendChild(left);
-        row.appendChild(right);
-
-        const why = document.createElement('div');
-        why.className = 'why';
-
-        const parts = [];
-        if (m.commonTem.length) parts.push(`Temática común: ${m.commonTem.join(', ')}`);
-        if (m.commonCon.length) parts.push(`Convocatorias comunes: ${m.commonCon.join(', ')}`);
-        why.textContent = parts.join(' · ');
-
-        li.appendChild(row);
-        li.appendChild(why);
-        ul.appendChild(li);
-      });
-
-      body.appendChild(ul);
-    }
-
-    modal.appendChild(top);
-    modal.appendChild(body);
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
+  function truncate(s, max = 260) {
+    const t = String(s || '').trim();
+    if (t.length <= max) return t;
+    return t.slice(0, max - 1) + '…';
   }
+
 
   // ---------- Init ----------
 
@@ -557,46 +428,38 @@
     try {
       const rows = await loadCsvObjects(CSV_URL);
 
+      window.__MATCH_CSV__ = CSV_URL;
+
       const items = rows
         .map((r, i) => toItem(r, i))
-        .filter((x) => x.name || x.summary); // quita filas vacías
+        .filter((x) => x.name || x.summaryLong || x.summary);
 
-      // Si no hay entradas todavía, no inicializamos List.js (si no, lanza error).
-      if (items.length === 0) {
-        state.data = [];
-        state.byId = new Map();
-        els.count.textContent = '0';
-        els.empty.hidden = false;
-        // También deja el botón del form visible para que puedan enviar la primera ficha
-        return;
-      }
+      const grupos = items.filter(x => x.type === 'grupo');
+      const empresas = items.filter(x => x.type === 'empresa');
 
-      state.data = items;
-      state.byId = new Map(items.map((x) => [x.id, x]));
+      renderCards(grupos, els.cardsGrupos);
+      renderCards(empresas, els.cardsEmpresas);
 
-      renderCards(items);
       buildFacets(items);
 
-      // List.js: usar el root id como contenedor
-      state.list = new List('matchapp', {
-        valueNames: ['name', 'summary', 'keywords_tematica', 'keywords_convo'],
-      });
+      state.lists.grupos = new List('col-grupos', { valueNames: ['name', 'summary', 'keywords_tematica', 'keywords_convo'] });
+      state.lists.empresas = new List('col-empresas', { valueNames: ['name', 'summary', 'keywords_tematica', 'keywords_convo'] });
 
-      // cuenta inicial
-      state.list.on('updated', updateCountAndEmpty);
+      state.lists.grupos.on('updated', updateCountAndEmpty);
+      state.lists.empresas.on('updated', updateCountAndEmpty);
       updateCountAndEmpty();
 
-      // radios tipo
-      els.typeRadios.forEach((r) => {
-        r.addEventListener('change', () => {
-          if (!r.checked) return;
-          state.filters.type = r.value;
+      const q = document.getElementById('q');
+      if (q) {
+        q.addEventListener('input', () => {
+          state.lists.grupos.search(q.value);
+          state.lists.empresas.search(q.value);
           applyFilters();
         });
-      });
+      }
 
-      // clear
       if (els.clear) els.clear.addEventListener('click', clearFilters);
+
     } catch (err) {
       console.error(err);
       renderFatal('Error cargando el directorio', String(err?.message || err));

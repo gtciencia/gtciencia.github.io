@@ -14,8 +14,9 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
 
 <div id="matchapp"
      class="match-app"
-     data-csv-url="https://docs.google.com/spreadsheets/d/e/2PACX-1vQeIaaWFgqIGzpKk4tOBTU0bAoE8A_Vwf01W4i-k7E8zJfOMVqhTVzffTaDmSIntZAF-b0yyyYv0b2S/pub?output=csv"
-     data-form-url="https://forms.gle/yRAZqbp4tGaTmLaq7">
+     data-csv-url="TU_URL_CSV"
+     data-form-url="https://forms.gle/yRAZqbp4tGaTmLaq7"
+     data-detail-url="{{ '/match/item/' | relative_url }}">
 
   <noscript>
     <p><strong>Esta página necesita JavaScript</strong> para cargar el directorio y aplicar filtros.</p>
@@ -28,15 +29,6 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
       <label for="q">Buscar</label>
       <input id="q" class="search" placeholder="Nombre, resumen, keyword…" />
       <p class="hint">Consejo: escribe “IA”, “Horizon”, “CDTI”…</p>
-    </div>
-
-    <div class="block">
-      <div class="block-title">Tipo</div>
-      <div class="radio-row">
-        <label><input type="radio" name="type" value="all" checked> Ambos</label>
-        <label><input type="radio" name="type" value="grupo"> Grupos</label>
-        <label><input type="radio" name="type" value="empresa"> Empresas</label>
-      </div>
     </div>
 
     <div class="block">
@@ -70,7 +62,17 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
       </div>
     </div>
 
-    <ul class="list cards" id="cards"></ul>
+    <div class="two-columns">
+      <section class="col" id="col-grupos">
+        <h3 class="col-title">Grupos de investigación (<span id="count-grupos">0</span>)</h3>
+        <ul class="list cards" id="cards-grupos"></ul>
+      </section>
+
+      <section class="col" id="col-empresas">
+        <h3 class="col-title">Empresas (<span id="count-empresas">0</span>)</h3>
+        <ul class="list cards" id="cards-empresas"></ul>
+      </section>
+    </div>
 
     <div class="empty" id="emptyState" hidden>
       <p><strong>No hay resultados con esos filtros.</strong></p>
@@ -78,6 +80,7 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
     </div>
   </main>
 </div>
+
 
 <!-- Dependencias (gratuitas) -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
