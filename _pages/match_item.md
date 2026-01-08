@@ -7,7 +7,7 @@ nav: false
 
 <div id="matchitem"
      class="match-item"
-     data-csv-url=""
+     data-csv-url="https://docs.google.com/spreadsheets/d/e/2PACX-1vQeIaaWFgqIGzpKk4tOBTU0bAoE8A_Vwf01W4i-k7E8zJfOMVqhTVzffTaDmSIntZAF-b0yyyYv0b2S/pub?output=csv"
      data-back-url="{{ '/match/' | relative_url }}">
   <noscript>
     <p><strong>Esta página necesita JavaScript</strong> para cargar la ficha.</p>

@@ -1,4 +1,4 @@
-/* match.js — directorio + filtros + “matching” básico (cliente)
+/* match.js — directorio + filtros (cliente)
    Requisitos: PapaParse (CSV) + List.js (search/sort/filter).
 */
 (() => {
@@ -9,7 +9,6 @@
 
   const CSV_URL = (root.dataset.csvUrl || '').trim();
   const FORM_URL = (root.dataset.formUrl || '').trim();
-
   const DETAIL_URL = (root.dataset.detailUrl || '').trim();
 
   const els = {
@@ -23,6 +22,7 @@
     facetTem: document.getElementById('facet-tematica'),
     facetCon: document.getElementById('facet-convo'),
     clear: document.getElementById('clearFilters'),
+    sortBtn: root.querySelector('button.sort[data-sort="name"]'),
   };
 
   if (els.formLink && FORM_URL) els.formLink.href = FORM_URL;
@@ -85,7 +85,6 @@
   function splitTags(raw) {
     const s = String(raw ?? '').trim();
     if (!s) return [];
-    // Separadores típicos: coma, punto y coma, barra, salto de línea
     return s
       .split(/[,;\n|]+/g)
       .map(normalizeTag)
@@ -125,27 +124,6 @@
     return false;
   }
 
-  function jaccard(a, b) {
-    const A = new Set(a);
-    const B = new Set(b);
-    if (A.size === 0 && B.size === 0) return 0;
-    let inter = 0;
-    for (const x of A) if (B.has(x)) inter += 1;
-    const union = A.size + B.size - inter;
-    return union === 0 ? 0 : inter / union;
-  }
-
-  function commonTags(a, b, max = 8) {
-    const A = new Set(a);
-    const out = [];
-    for (const x of b) if (A.has(x)) out.push(x);
-    return out.slice(0, max);
-  }
-
-  function fmtScore(x) {
-    return (Math.round(x * 100) / 100).toFixed(2);
-  }
-
   // ---------- Carga y render ----------
 
   async function loadCsvObjects(url) {
@@ -159,23 +137,23 @@
       transformHeader: (h) => String(h || '').trim(),
     });
 
-    if (parsed.errors?.length) {
-      // PapaParse devuelve warnings/errores; no abortamos salvo que sea crítico
-      console.warn('PapaParse errors:', parsed.errors);
-    }
-
+    if (parsed.errors?.length) console.warn('PapaParse errors:', parsed.errors);
     return parsed.data || [];
   }
 
   function toItem(row, idx) {
-    // Mapeo flexible de columnas (ajusta si tu Form usa otros nombres)
-    const type = normalizeType(pick(row, ['Tipo', 'Eres...', 'TYPE', 'Entidad', 'Entity']));
-    const name = String(pick(row, ['Nombre de la entidad', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'])).trim();
+    const type = normalizeType(pick(row, ['Tipo', 'Eres...', 'TYPE', 'Entidad', 'Entity', 'Tipo de entidad']));
+    const name = String(pick(row, [
+      'Nombre de la entidad', 'Nombre', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'
+    ])).trim();
+
     const summaryLong = String(pick(row, [
       'Resumen corto de actividades (máx. 1200 caracteres)',
       'Resumen corto de actividades (máx. 1200 caracteres).',
       'Resumen corto de actividades',
-      'Resumen'
+      'Resumen',
+      'Descripción',
+      'Descripcion',
     ])).trim();
 
     const tematica = splitTags(pick(row, [
@@ -183,20 +161,30 @@
     ]));
 
     const convo = splitTags(pick(row, [
-      'Keywords convocatoria', 'Convocatorias', 'Calls', 'CALLS', 'Funding', 'Programas'
+      'Keywords convocatorias',
+      'Keywords convocatoria',
+      'Convocatorias',
+      'Calls',
+      'CALLS',
+      'Funding',
+      'Programas'
     ]));
 
-    const pdf = safeUrl(String(pick(row, ['PDF', 'Pdf', 'PDF link', 'Material PDF', 'Brochure', 'BROCHURE'])).trim());
-    const web = safeUrl(String(pick(row, ['Web', 'Website', 'URL', 'Url'])).trim());
-    const videos = extractUrls(pick(row, ['Vídeos', 'Videos', 'Video', 'YouTube', 'Vimeo'])).map(safeUrl).filter(Boolean);
-    const links = extractUrls(pick(row, ['Enlaces', 'Links', 'Material', 'MATERIAL'])).map(safeUrl).filter(Boolean);
+    const pdf = safeUrl(String(pick(row, ['PDF', 'Pdf', 'PDF link', 'Material PDF', 'Enlace PDF', 'Brochure', 'BROCHURE'])).trim());
+    const web = safeUrl(String(pick(row, ['Web', 'Website', 'URL', 'Url', 'Página web', 'Pagina web'])).trim());
+
+    const videos = extractUrls(pick(row, ['Vídeos', 'Videos', 'Video', 'YouTube', 'Vimeo']))
+      .map(safeUrl).filter(Boolean);
+
+    const links = extractUrls(pick(row, ['Enlaces', 'Links', 'Material', 'MATERIAL']))
+      .map(safeUrl).filter(Boolean);
 
     const idRaw = pick(row, ['ID', 'Id', 'id', 'Timestamp', 'Marca temporal', 'Marca temporal (timestamp)']);
     const id = String(idRaw || '').trim() || `row-${idx}`;
 
     return {
       id,
-      type: (type === 'unknown' ? 'grupo' : type), // valor por defecto si el form no lo recoge
+      type: (type === 'unknown' ? 'grupo' : type),
       name,
       summaryLong,
       tematica,
@@ -209,12 +197,24 @@
     };
   }
 
-  function renderCards(items, container, type) {
+  function truncate(s, max = 260) {
+    const t = String(s || '').trim();
+    if (t.length <= max) return t;
+    return t.slice(0, max - 1) + '…';
+  }
+
+  function makeDetailHref(id) {
+    if (!DETAIL_URL) return '#';
+    // Pasamos también el CSV para que /match/item/ funcione aunque se abra “directo”
+    return `${DETAIL_URL}?id=${encodeURIComponent(id)}&csv=${encodeURIComponent(CSV_URL)}`;
+  }
+
+  function renderCards(items, container) {
     container.innerHTML = '';
 
     for (const it of items) {
       const li = document.createElement('li');
-      li.className = `card card--${it.type}`; // <-- para colores
+      li.className = `card card--${it.type}`;
       li.dataset.type = it.type;
       li.dataset.tematica = it.tematica.join('|');
       li.dataset.convo = it.convo.join('|');
@@ -226,25 +226,24 @@
       const h = document.createElement('h3');
       h.className = 'name';
 
-      // enlace a detalle
       const a = document.createElement('a');
-      a.href = DETAIL_URL ? `${DETAIL_URL}?id=${encodeURIComponent(it.id)}` : '#';
+      a.href = makeDetailHref(it.id);
       a.textContent = it.name || '(sin nombre)';
       a.className = 'detail-link';
       h.appendChild(a);
 
-      const badge = document.createElement('span');
-      badge.className = `badge badge--${it.type}`;
-      badge.textContent = it.type === 'empresa' ? 'Empresa' : 'Grupo';
+      const pill = document.createElement('span');
+      pill.className = `type-pill type-pill--${it.type}`;
+      pill.textContent = it.type === 'empresa' ? 'Empresa' : 'Grupo';
 
       header.appendChild(h);
-      header.appendChild(badge);
+      header.appendChild(pill);
 
       const p = document.createElement('p');
       p.className = 'summary';
-      p.textContent = truncate(it.summaryLong || it.summary || '', 260);
+      p.textContent = truncate(it.summaryLong || '', 260);
 
-      // hidden fields para búsqueda
+      // Hidden fields para List.js (búsqueda)
       const hiddenTem = document.createElement('span');
       hiddenTem.className = 'keywords_tematica';
       hiddenTem.hidden = true;
@@ -262,16 +261,6 @@
 
       container.appendChild(li);
     }
-  }
-
-
-  function linkEl(label, href) {
-    const a = document.createElement('a');
-    a.href = href;
-    a.textContent = label;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    return a;
   }
 
   function buildFacets(items) {
@@ -351,21 +340,7 @@
     if (checked) set.add(tag);
     else set.delete(tag);
 
-    // sincroniza checkbox UI (cuando activas desde un tag del card)
-    syncFacetCheckbox(which, tag, checked);
-
     applyFilters();
-  }
-
-  function syncFacetCheckbox(which, tag, checked) {
-    const facetContainer = (which === 'tematica') ? els.facetTem : els.facetCon;
-    const inputs = facetContainer.querySelectorAll('input[type="checkbox"]');
-    for (const input of inputs) {
-      if (input.value === tag) {
-        input.checked = checked;
-        break;
-      }
-    }
   }
 
   function applyFilters() {
@@ -415,24 +390,18 @@
     els.empty.hidden = n !== 0;
   }
 
-  function truncate(s, max = 260) {
-    const t = String(s || '').trim();
-    if (t.length <= max) return t;
-    return t.slice(0, max - 1) + '…';
-  }
-
-
   // ---------- Init ----------
 
   async function init() {
     try {
       const rows = await loadCsvObjects(CSV_URL);
 
+      // Compatibilidad: si alguien sigue usando window.__MATCH_CSV__ en otra parte
       window.__MATCH_CSV__ = CSV_URL;
 
       const items = rows
         .map((r, i) => toItem(r, i))
-        .filter((x) => x.name || x.summaryLong || x.summary);
+        .filter((x) => x.name || x.summaryLong);
 
       const grupos = items.filter(x => x.type === 'grupo');
       const empresas = items.filter(x => x.type === 'empresa');
@@ -449,12 +418,27 @@
       state.lists.empresas.on('updated', updateCountAndEmpty);
       updateCountAndEmpty();
 
+      // Búsqueda global para ambas listas
       const q = document.getElementById('q');
       if (q) {
         q.addEventListener('input', () => {
           state.lists.grupos.search(q.value);
           state.lists.empresas.search(q.value);
           applyFilters();
+        });
+      }
+
+      // Ordenar A-Z / Z-A
+      if (els.sortBtn) {
+        let asc = true;
+        els.sortBtn.addEventListener('click', () => {
+          const order = asc ? 'asc' : 'desc';
+          state.lists.grupos?.sort('name', { order });
+          state.lists.empresas?.sort('name', { order });
+
+          // El texto indica la acción siguiente (más claro para el usuario)
+          els.sortBtn.textContent = asc ? 'Ordenar Z→A' : 'Ordenar A→Z';
+          asc = !asc;
         });
       }
 

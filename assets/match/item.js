@@ -1,8 +1,12 @@
+/* item.js — ficha individual (/match/item/)
+   Carga el mismo CSV que el directorio y busca por ?id=
+   Requisitos: PapaParse
+*/
 (() => {
   'use strict';
 
   const body = document.getElementById('itemBody');
-  const back = document.getElementById('backLink');
+  const root = document.getElementById('matchitem');
 
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
@@ -27,6 +31,15 @@
     }
   }
 
+  function extractUrls(raw) {
+    const s = String(raw ?? '');
+    const re = /(https?:\/\/[^\s,;]+)/g;
+    const out = [];
+    let m;
+    while ((m = re.exec(s)) !== null) out.push(m[1]);
+    return out.filter((u, idx, arr) => arr.indexOf(u) === idx);
+  }
+
   function pick(row, candidates) {
     for (const key of candidates) {
       if (key in row && String(row[key] ?? '').trim() !== '') return row[key];
@@ -39,7 +52,18 @@
     if (!s) return 'unknown';
     if (s.startsWith('emp')) return 'empresa';
     if (s.startsWith('gru')) return 'grupo';
+    if (s.includes('research')) return 'grupo';
+    if (s.includes('company')) return 'empresa';
     return s;
+  }
+
+  function normalizeTag(raw) {
+    return String(raw ?? '')
+      .trim()
+      .toLowerCase()
+      .replaceAll(/\s+/g, ' ')
+      .replaceAll(/[·•]/g, ' ')
+      .trim();
   }
 
   function splitTags(raw) {
@@ -47,7 +71,7 @@
     if (!s) return [];
     return s
       .split(/[,;\n|]+/g)
-      .map(x => String(x).trim().toLowerCase())
+      .map(normalizeTag)
       .filter(Boolean)
       .filter((t, i, a) => a.indexOf(t) === i);
   }
@@ -63,6 +87,7 @@
       transformHeader: (h) => String(h || '').trim(),
     });
 
+    if (parsed.errors?.length) console.warn('PapaParse errors:', parsed.errors);
     return parsed.data || [];
   }
 
@@ -102,39 +127,64 @@
       return;
     }
 
-    // Tomamos el CSV desde /match/ leyendo un atributo inyectado por tu página principal:
-    // fallback: si lo prefieres, pega aquí la URL fija del CSV
-    // const CSV_URL = "TU_URL_CSV";
-    // Pero mejor: guardarlo en window.__MATCH_CSV__ desde match.js (lo hacemos ahora).
-    const CSV_URL = window.__MATCH_CSV__;
+    // 1) si vienes desde /match/, pasamos ?csv=... en el enlace.
+    // 2) fallback: data-csv-url en match_item.md
+    // 3) compat: window.__MATCH_CSV__
+    const csvParam = getParam('csv');
+    const CSV_URL = (csvParam || root?.dataset.csvUrl || window.__MATCH_CSV__ || '').trim();
+
     if (!CSV_URL) {
-      body.innerHTML = `<p><strong>No se encuentra la URL del CSV.</strong> Abre primero el directorio /match/ o define window.__MATCH_CSV__.</p>`;
+      body.innerHTML = `
+        <p><strong>No se encuentra la URL del CSV.</strong></p>
+        <p class="hint">Solución: abre esta ficha desde el directorio (/match/) o define <code>data-csv-url</code> en <code>match_item.md</code>.</p>
+      `;
       return;
     }
 
     const rows = await loadCsvObjects(CSV_URL);
 
     const items = rows.map((row, idx) => {
-      const type = normalizeType(pick(row, ['Tipo', 'type', 'TYPE', 'Tipo de entidad']));
-      const name = String(pick(row, ['Nombre', 'Nombre de la entidad', 'Name', 'Entidad'])).trim();
+      const type = normalizeType(pick(row, [
+        'Tipo', 'Eres...', 'type', 'TYPE', 'Entidad', 'Entity', 'Tipo de entidad'
+      ]));
 
-      // Campo LARGO (1200) del formulario:
+      const name = String(pick(row, [
+        'Nombre de la entidad', 'Nombre', 'Name', 'Organización', 'Organizacion', 'Entidad', 'TITLE', 'Title'
+      ])).trim();
+
       const summaryLong = String(pick(row, [
         'Resumen corto de actividades (máx. 1200 caracteres)',
         'Resumen corto de actividades (máx. 1200 caracteres).',
         'Resumen corto de actividades',
         'Resumen largo',
-        'Resumen'
+        'Resumen',
+        'Descripción',
+        'Descripcion',
       ])).trim();
 
-      const tematica = splitTags(pick(row, ['Keywords temática', 'Temática', 'Tematica', 'Tags', 'Keywords']));
-      const convo = splitTags(pick(row, ['Keywords convocatorias', 'Convocatorias', 'Calls', 'Programas']));
+      const tematica = splitTags(pick(row, [
+        'Keywords temática', 'Keywords tematica', 'Temática', 'Tematica', 'TAGS', 'Tags', 'Keywords'
+      ]));
 
-      const web = safeUrl(String(pick(row, ['Web', 'Website', 'URL', 'Pagina web', 'Página web'])).trim());
-      const pdf = safeUrl(String(pick(row, ['PDF', 'Material PDF', 'Enlace PDF'])).trim());
+      const convo = splitTags(pick(row, [
+        'Keywords convocatorias',
+        'Keywords convocatoria',
+        'Convocatorias',
+        'Calls',
+        'CALLS',
+        'Programas',
+      ]));
 
-      // Id consistente (marca temporal suele existir)
-      const idRaw = pick(row, ['ID', 'Id', 'id', 'Timestamp', 'Marca temporal']);
+      const web = safeUrl(String(pick(row, ['Web', 'Website', 'URL', 'Url', 'Pagina web', 'Página web'])).trim());
+      const pdf = safeUrl(String(pick(row, ['PDF', 'Pdf', 'Material PDF', 'Enlace PDF', 'PDF link'])).trim());
+
+      const videos = extractUrls(pick(row, ['Vídeos', 'Videos', 'Video', 'YouTube', 'Vimeo']))
+        .map(safeUrl).filter(Boolean);
+
+      const links = extractUrls(pick(row, ['Enlaces', 'Links', 'Material', 'MATERIAL']))
+        .map(safeUrl).filter(Boolean);
+
+      const idRaw = pick(row, ['ID', 'Id', 'id', 'Timestamp', 'Marca temporal', 'Marca temporal (timestamp)']);
       const rid = String(idRaw || '').trim() || `row-${idx}`;
 
       return {
@@ -146,8 +196,8 @@
         convo,
         pdf,
         web,
-        videos: [],
-        links: [],
+        videos,
+        links,
       };
     });
 
