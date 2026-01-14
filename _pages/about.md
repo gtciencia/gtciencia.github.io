@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle: <a href='#'>Affiliations</a>. Address. Contacts. Motto. Etc.
+subtitle: <a href='www.coit.es'>Coleigo Oficial de Ingenieros de Telecomunicación</a>.
 
 profile:
   align: right
@@ -38,4 +38,4 @@ El GT Ciencia nace con el propósito de facilitar y potenciar la colaboración e
 
 # Herramientas y acciones
 
-- Creación de una plataforma online (Bridge it) para visibilizar líneas de investigación, actividades de I+D y puntos de encuentro en diferentes convocatorias. Un ejemplo está [aquí](https://gtciencia.github.io/bridgeit/).
+- Creación de una plataforma online (Bridge it!) para visibilizar líneas de investigación, actividades de I+D y puntos de encuentro en diferentes convocatorias. Un ejemplo está [aquí](https://gtciencia.github.io/bridgeit/).

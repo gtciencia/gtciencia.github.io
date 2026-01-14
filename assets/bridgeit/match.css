@@ -1,25 +1,17 @@
-/* bridgeit/match.css — estilos del directorio “Bridge it!” (al-folio compatible)
+/* assets/bridgeit/match.css — estilos del directorio “Bridge it!” (al-folio compatible)
    Paleta:
    - base:   #003f6f
    - acento: #f39700
 */
 
-/* ---------------------------
-   LAYOUT (3 columnas visuales)
-   - Columna 1: filtros
-   - Columna 2: resultados (grupos)
-   - Columna 3: resultados (empresas)
-   --------------------------- */
-
 .match-app{
   --gt-base: #003f6f;
   --gt-accent: #f39700;
 
-  /* Ancho “page-level” sin tocar _config.yml */
-  width: min(1200px, calc(100vw - 2rem));
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  /* Si en _config.yml ya has puesto 1200px, esto simplemente acompaña */
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -27,23 +19,27 @@
   align-items: start;
 }
 
-/* En móviles apilamos (primero filtros, luego resultados) */
+/* En móviles apilamos (filtros arriba, resultados abajo) */
 @media (max-width: 980px){
   .match-app{ grid-template-columns: 1fr; }
 }
 
-/* Columna de filtros (sticky en desktop) */
+/* ---------------------------
+   FILTROS (sticky)
+   --------------------------- */
+
 .match-app .filters{
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 12px;
   padding: 1rem;
 
+  /* En al-folio el navbar suele ser fixed-top -> dejamos margen */
   position: sticky;
-  top: 1rem;
+  top: 5rem; /* evita que el navbar se “coma” los filtros al hacer scroll */
   align-self: start;
 
   background: var(--global-bg-color, #fff);
-  z-index: 10;
+  z-index: 5;
 }
 
 @media (max-width: 980px){
@@ -51,49 +47,6 @@
 }
 
 .match-app .filters h2{ margin: 0 0 0.8rem 0; }
-
-/* Columna de resultados */
-.match-app .results{ min-width: 0; }
-
-/* Dos columnas SOLO en resultados (grupos / empresas) */
-.match-app .two-columns{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 980px){
-  .match-app .two-columns{ grid-template-columns: 1fr; }
-}
-
-.match-app .col{ min-width: 0; }
-
-/* ---------------------------
-   CABECERAS / CONTADORES
-   --------------------------- */
-
-.match-app .results-header{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-bottom: 0.7rem;
-}
-
-.match-app .col-title{
-  margin: 8px 0 12px 0;
-  font-size: 1.05rem;
-  color: var(--gt-base);
-}
-
-.match-app .col-title span{
-  color: var(--gt-accent);
-  font-weight: 700;
-}
-
-/* ---------------------------
-   FILTROS
-   --------------------------- */
 
 .match-app .block{ margin: 0 0 1rem 0; }
 
@@ -138,6 +91,43 @@
 
 .match-app .actions{ display:flex; gap: 0.5rem; }
 .match-app #clearFilters{ width: 100%; }
+
+/* ---------------------------
+   RESULTADOS (2 columnas internas)
+   --------------------------- */
+
+.match-app .results{ min-width: 0; }
+
+.match-app .results-header{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+
+.match-app .two-columns{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 980px){
+  .match-app .two-columns{ grid-template-columns: 1fr; }
+}
+
+.match-app .col{ min-width: 0; }
+
+.match-app .col-title{
+  margin: 8px 0 12px 0;
+  font-size: 1.05rem;
+  color: var(--gt-base);
+}
+
+.match-app .col-title span{
+  color: var(--gt-accent);
+  font-weight: 700;
+}
 
 /* ---------------------------
    LISTAS Y TARJETAS
@@ -238,13 +228,6 @@
   color: #7a4700;
 }
 
-.match-app .type-pill--unknown{
-  background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.18);
-  color: rgba(0,0,0,0.75);
-}
-
-/* Texto: pitch (o fallback a resumen truncado) */
 .match-app .summary{
   margin: 0.45rem 0 0 0;
   opacity: 0.96;
@@ -254,7 +237,7 @@
   font-weight: 520;
 }
 
-/* Chips (temática + convocatorias) */
+/* Chips: todas las temáticas + convocatorias (sin límite) */
 .match-app .chips{
   display:flex;
   flex-wrap: wrap;
@@ -270,14 +253,12 @@
   user-select: none;
 }
 
-/* Temática: tono base */
 .match-app .tag--tem{
   background: rgba(0, 63, 111, 0.08);
   border-color: rgba(0, 63, 111, 0.20);
   color: var(--gt-base);
 }
 
-/* Convocatorias: tono acento */
 .match-app .tag--convo{
   background: rgba(243, 151, 0, 0.18);
   border-color: rgba(243, 151, 0, 0.40);
@@ -363,7 +344,7 @@
 }
 
 /* ---------------------------
-   PÁGINA DE DETALLE (/bridgeit/item/)
+   PÁGINA DE FICHA (/bridgeit/item/)
    --------------------------- */
 
 .match-item{
@@ -390,24 +371,9 @@
   gap: 1rem;
 }
 
-.match-item .item-titlewrap{
-  min-width: 0;
-}
+.match-item .item-titlewrap{ min-width: 0; }
 
-.match-item .item-title{
-  margin: 0;
-}
-
-.match-item .item-pitch{
-  margin: 0.55rem 0 0 0;
-  padding: 0.65rem 0.75rem;
-  border-radius: 12px;
-  border: 1px solid rgba(243, 151, 0, 0.40);
-  background: rgba(243, 151, 0, 0.12);
-  color: #5a3500;
-  font-size: 1.05rem;
-  line-height: 1.25;
-}
+.match-item .item-title{ margin: 0; }
 
 .match-item .item-side{
   display:flex;
@@ -447,7 +413,18 @@
   color: #7a4700;
 }
 
-/* Callout (página ampliada) */
+.match-item .item-pitch{
+  margin: 0.55rem 0 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 151, 0, 0.40);
+  background: rgba(243, 151, 0, 0.12);
+  color: #5a3500;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+/* Callout (si hay página externa o si no se pudo embeb(er)) */
 .match-item .item-callout{
   margin: 0.9rem 0;
   padding: 0.65rem 0.8rem;
@@ -471,6 +448,31 @@
   white-space: pre-wrap;
 }
 
+/* Cuando el resumen viene de markdown embebido */
+.match-item .item-summary--md .item-md{
+  margin-top: 0.35rem;
+}
+
+/* Evita que imágenes “rompan” el layout */
+.match-item .item-md img{
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.match-item .item-md iframe,
+.match-item .item-md video{
+  max-width: 100%;
+}
+
+/* Títulos dentro del markdown embebido */
+.match-item .item-md h2,
+.match-item .item-md h3{
+  color: var(--gt-base);
+  margin-top: 1rem;
+}
+
+/* Secciones */
 .match-item .item-summary h3,
 .match-item .item-tags h3,
 .match-item .item-links h3{

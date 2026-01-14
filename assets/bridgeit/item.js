@@ -1,12 +1,14 @@
-/* bridgeit/item.js — ficha individual (/bridgeit/item/)
+/* assets/bridgeit/item.js — ficha individual (/bridgeit/item/)
    Carga el mismo CSV que el directorio y busca por ?id=
    Dependencias: PapaParse
 
-   Novedades:
-   - Muestra "Elevator pitch" (si existe)
-   - Separa “Capacidades / temática” y “Convocatorias de interés”
-   - Soporta logo/imagen (URL) y página ampliada (si existe)
+   Cambios (enero 2026):
+   - Etiquetas separadas en 2 líneas/bloques: Temáticas y Convocatorias.
+   - Si existe “Página Bridge it (opcional)” (interna), se intenta EMBEBER el contenido HTML de esa página
+     como reemplazo del “Resumen 1200” (summaryLong). El resto de la ficha (tags, material, volver arriba)
+     sigue viniendo del CSV.
 */
+
 (() => {
   'use strict';
 
@@ -16,6 +18,8 @@
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
+
+  // ---------- Sanitización / helpers ----------
 
   function escapeHtml(s) {
     return String(s ?? '')
@@ -36,6 +40,7 @@
     }
   }
 
+  // Acepta URLs absolutas http(s) o rutas internas "/...".
   function safeHref(raw) {
     const s = String(raw ?? '').trim();
     if (!s) return null;
@@ -124,6 +129,107 @@
     return parsed.data || [];
   }
 
+  // ---------- Embebido de página Markdown (interna) ----------
+
+  function resolveRelativeUrl(raw, baseUrl) {
+    const s = String(raw || '').trim();
+    if (!s) return null;
+
+    // Anclas, data:, mailto:, tel: -> dejar tal cual
+    if (s.startsWith('#')) return s;
+    if (/^(data:|mailto:|tel:)/i.test(s)) return s;
+
+    // Absolutas
+    if (/^https?:\/\//i.test(s)) return s;
+
+    // Rutas absolutas del sitio (/assets/...)
+    if (s.startsWith('/') && !s.startsWith('//')) return s;
+
+    // Relativas (img/logo.png, ./a, ../a...)
+    try {
+      return new URL(s, baseUrl).toString();
+    } catch {
+      return s;
+    }
+  }
+
+  function cleanAndExtractProfileHtml(htmlText, profileHref) {
+    // Parse
+    const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+
+    // Prioridad: si el autor incluye este wrapper, embebemos SOLO esto.
+    // Ejemplo en Markdown:
+    // <div class="bridgeit-profile"> ... </div>
+    let node =
+      doc.querySelector('.bridgeit-profile') ||
+      doc.querySelector('.post') ||
+      doc.querySelector('article') ||
+      doc.querySelector('main') ||
+      doc.querySelector('.page-content') ||
+      doc.body;
+
+    // Clonamos para manipular sin tocar doc
+    const clone = node.cloneNode(true);
+
+    // Quitar elementos potencialmente problemáticos
+    clone.querySelectorAll('script, style, nav, header, footer').forEach(el => el.remove());
+
+    // Quitar el primer H1 (evita duplicar título con el de la ficha)
+    const h1 = clone.querySelector('h1');
+    if (h1) h1.remove();
+
+    // Reescribir URLs relativas de imágenes y links (muy importante si el markdown usa rutas relativas)
+    const baseUrl = new URL(profileHref, window.location.origin);
+    clone.querySelectorAll('img[src]').forEach(img => {
+      const src = img.getAttribute('src');
+      const resolved = resolveRelativeUrl(src, baseUrl);
+      if (resolved) img.setAttribute('src', resolved);
+    });
+
+    clone.querySelectorAll('a[href]').forEach(a => {
+      const href = a.getAttribute('href');
+      const resolved = resolveRelativeUrl(href, baseUrl);
+      if (resolved) a.setAttribute('href', resolved);
+
+      // Si abre a URL externa, que sea en nueva pestaña
+      const finalHref = a.getAttribute('href') || '';
+      if (/^https?:\/\//i.test(finalHref)) {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener');
+      }
+    });
+
+    // Devolver HTML resultante (innerHTML)
+    const wrapper = document.createElement('div');
+    // Movemos nodos hijo
+    while (clone.firstChild) wrapper.appendChild(clone.firstChild);
+    return wrapper.innerHTML.trim();
+  }
+
+  async function tryFetchProfileHtml(profileUrl) {
+    const href = safeHref(profileUrl);
+    if (!href) return { html: '', href: null, embedded: false };
+
+    // Externas: no intentamos embebido (CORS); solo link
+    if (isExternalHref(href)) return { html: '', href, embedded: false };
+
+    // Solo rutas internas. Si alguien pone algo raro, lo ignoramos.
+    if (!href.startsWith('/')) return { html: '', href, embedded: false };
+
+    try {
+      const res = await fetch(href, { cache: 'no-store' });
+      if (!res.ok) return { html: '', href, embedded: false };
+      const text = await res.text();
+      const html = cleanAndExtractProfileHtml(text, href);
+      return { html, href, embedded: Boolean(html) };
+    } catch (e) {
+      console.warn('No se pudo embeb(er) la página de perfil:', e);
+      return { html: '', href, embedded: false };
+    }
+  }
+
+  // ---------- Render ----------
+
   function renderLinks(links) {
     if (!links.length) return '';
     return links.map(({ label, href }) => {
@@ -143,7 +249,7 @@
     }).join(' ') + `</div>`;
   }
 
-  function render(it) {
+  function render(it, profileEmbed) {
     const badge = it.type === 'empresa' ? 'Empresa' : 'Grupo de investigación';
     const cls = it.type === 'empresa' ? 'item-badge empresa' : 'item-badge grupo';
 
@@ -154,8 +260,31 @@
     for (const v of it.videos) mats.push({ label: 'Vídeo', href: v });
     for (const u of it.links) mats.push({ label: 'Enlace', href: u });
 
-    // Página ampliada (opcional)
-    const expanded = it.profileUrl ? safeHref(it.profileUrl) : null;
+    const hasProfileUrl = Boolean(profileEmbed?.href);
+    const embedded = Boolean(profileEmbed?.embedded);
+    const profileHref = profileEmbed?.href || null;
+
+    // Resumen:
+    // - Si hay HTML embebido -> sustituye summaryLong
+    // - Si no -> usamos summaryLong del form
+    let summaryHtml = '';
+    if (embedded) {
+      summaryHtml = `
+        <div class="item-summary item-summary--md">
+          <h3>Resumen de actividades</h3>
+          <div class="item-md">
+            ${profileEmbed.html}
+          </div>
+        </div>
+      `;
+    } else if (it.summaryLong) {
+      summaryHtml = `
+        <div class="item-summary">
+          <h3>Resumen de actividades</h3>
+          <p>${escapeHtml(it.summaryLong)}</p>
+        </div>
+      `;
+    }
 
     body.innerHTML = `
       <div class="item-header">
@@ -170,24 +299,19 @@
         </div>
       </div>
 
-      ${expanded ? `
+      ${hasProfileUrl && !embedded ? `
         <div class="item-callout">
           <strong>Ficha ampliada:</strong>
-          <a href="${escapeHtml(expanded)}"${isExternalHref(expanded) ? ' target="_blank" rel="noopener"' : ''}>
-            ${escapeHtml(expanded)}
+          <a href="${escapeHtml(profileHref)}"${isExternalHref(profileHref) ? ' target="_blank" rel="noopener"' : ''}>
+            Abrir página
           </a>
         </div>
       ` : ''}
 
-      ${it.summaryLong ? `
-        <div class="item-summary">
-          <h3>Resumen de actividades</h3>
-          <p>${escapeHtml(it.summaryLong)}</p>
-        </div>
-      ` : ''}
+      ${summaryHtml}
 
       <div class="item-tags">
-        <h3>Capacidades / temática</h3>
+        <h3>Temáticas / capacidades</h3>
         ${renderTags(it.tematica, 'tem')}
       </div>
 
@@ -205,6 +329,8 @@
     `;
   }
 
+  // ---------- Init ----------
+
   async function init() {
     const id = getParam('id');
     if (!id) {
@@ -212,9 +338,6 @@
       return;
     }
 
-    // 1) si vienes desde /bridgeit/, pasamos ?csv=... en el enlace.
-    // 2) fallback: data-csv-url en el HTML de la página
-    // 3) compat: window.__MATCH_CSV__
     const csvParam = getParam('csv');
     const CSV_URL = (csvParam || root?.dataset.csvUrl || window.__MATCH_CSV__ || '').trim();
 
@@ -300,8 +423,6 @@
           'Pagina Bridge it',
           'Página Bridge it (opcional)',
           'Pagina Bridge it (opcional)',
-          'Página (opcional)',
-          'Pagina (opcional)',
           'Página',
           'Pagina',
           'Perfil',
@@ -321,7 +442,7 @@
 
       const web = safeUrl(String(pickSmart(
         row,
-        ['Web', 'Website', 'URL', 'Url', 'Pagina web', 'Página web'],
+        ['Web', 'Website', 'URL', 'Url', 'Pagina web', 'Página web', 'Site'],
         [/web/i, /website/i, /p(á|a)gina web/i]
       )).trim());
 
@@ -373,7 +494,10 @@
       return;
     }
 
-    render(it);
+    // Si hay página Bridge it interna, intentamos embebido
+    const profileEmbed = await tryFetchProfileHtml(it.profileUrl);
+
+    render(it, profileEmbed);
   }
 
   init().catch(err => {

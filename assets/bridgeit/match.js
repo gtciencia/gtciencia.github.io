@@ -1,13 +1,13 @@
-/* bridgeit/match.js — directorio + filtros (cliente)
+/* assets/bridgeit/match.js — directorio + filtros (cliente)
    Lee un CSV público (Google Sheets publicado) y construye un directorio “Bridge it!”.
    Dependencias: PapaParse (CSV) + List.js (search/sort/filter).
 
-   Novedades:
-   - Soporte de "Elevator pitch" (campo corto para la tarjeta)
-   - Soporte de "Convocatorias de interés" (tags/faceta)
-   - Soporte de "Página Bridge it (opcional)" -> si existe, enlaza a esa página; si no, a la ficha generada.
-   - Soporte de "Logo/Imagen (URL)" (opcional)
+   Cambios (enero 2026):
+   - Las tarjetas SIEMPRE enlazan a la ficha generada (/bridgeit/item/?id=...), incluso si existe página Markdown.
+     (La página Markdown se usa en la ficha para reemplazar el “Resumen 1200” cuando sea posible.)
+   - Se muestran TODAS las etiquetas (temática y convocatorias) en las tarjetas (sin límite 2/3).
 */
+
 (() => {
   'use strict';
 
@@ -30,6 +30,7 @@
     facetCon: document.getElementById('facet-convo'),
     clear: document.getElementById('clearFilters'),
     sortBtn: root.querySelector('button.sort[data-sort="name"]'),
+    q: document.getElementById('q'),
   };
 
   if (els.formLink && FORM_URL) els.formLink.href = FORM_URL;
@@ -124,14 +125,8 @@
     const abs = safeUrl(s);
     if (abs) return abs;
 
-    // Rutas internas (recomendado: /bridgeit/...)
     if (s.startsWith('/') && !s.startsWith('//')) return s;
-
     return null;
-  }
-
-  function isExternalHref(href) {
-    return /^https?:\/\//i.test(String(href || ''));
   }
 
   function pick(row, candidates) {
@@ -141,7 +136,6 @@
     return '';
   }
 
-  // Selecciona una columna por patrón del nombre (útil cuando cambias el texto de la pregunta del Form).
   function pickByRegex(row, regexes) {
     const keys = Object.keys(row || {});
     for (const re of regexes) {
@@ -199,7 +193,6 @@
       [/^nombre/i, /organiza/i, /entidad/i, /name/i, /title/i]
     )).trim();
 
-    // Nuevo: Elevator pitch (campo corto para la tarjeta)
     const pitch = String(pickSmart(
       row,
       [
@@ -208,16 +201,13 @@
         'Pitch',
         'Elevator pitch (máx. 280 caracteres)',
         'Elevator pitch (max. 280 caracteres)',
-        'Elevator pitch (máx. 300 caracteres)',
         'Propuesta de valor',
-        'Propuesta de valor (1-2 frases)',
         'Mensaje corto',
         'Resumen en 1 frase',
       ],
       [/elevator/i, /\bpitch\b/i, /propuesta.*valor/i, /mensaje.*corto/i, /1\s*frase/i]
     )).trim();
 
-    // Resumen largo (hasta 1200) para la ficha
     const summaryLong = String(pickSmart(
       row,
       [
@@ -231,14 +221,12 @@
       [/resumen/i, /descrip/i]
     )).trim();
 
-    // Capacidades / temática
     const tematica = splitTags(pickSmart(
       row,
-      ['Keywords temática', 'Keywords tematica', 'Temática', 'Tematica', 'THEMATIC', 'TAGS', 'Tags', 'Capacidades', 'Capacidades técnicas', 'Capacidades tecnicas'],
+      ['Keywords temática', 'Keywords tematica', 'Temática', 'Tematica', 'TAGS', 'Tags', 'Keywords', 'Capacidades', 'Capacidades técnicas', 'Capacidades tecnicas'],
       [/temat/i, /capacidad/i, /keyword.*tema/i, /\btags?\b/i]
     ));
 
-    // Convocatorias de interés (para participar)
     const convo = splitTags(pickSmart(
       row,
       [
@@ -249,18 +237,14 @@
         'Convocatorias de interes',
         'Convocatorias objetivo',
         'Convocatorias a las que concurrir',
-        'Convocatorias a las que quiere concurrir',
-        'Convocatorias a las que queréis concurrir',
         'Calls',
         'CALLS',
         'Funding',
         'Programas',
-        'Programas objetivo',
       ],
       [/convoc/i, /\bcalls?\b/i, /program/i, /funding/i]
     ));
 
-    // Opcional: URL/página ampliada (Markdown en el sitio o URL externa)
     const profileUrl = safeHref(pickSmart(
       row,
       [
@@ -268,21 +252,14 @@
         'Pagina Bridge it',
         'Página Bridge it (opcional)',
         'Pagina Bridge it (opcional)',
-        'Página (opcional)',
-        'Pagina (opcional)',
-        'Página',
-        'Pagina',
         'Perfil',
         'Profile',
         'URL página',
-        'URL pagina',
         'URL perfil',
-        'Profile URL',
       ],
       [/p(á|a)gina/i, /perfil/i, /\bprofile\b/i, /url.*(p(á|a)gina|perfil)/i]
     ));
 
-    // Opcional: imagen/logo (URL)
     const logo = safeHref(pickSmart(
       row,
       [
@@ -300,7 +277,7 @@
 
     const pdf = safeUrl(String(pickSmart(
       row,
-      ['PDF', 'Pdf', 'PDF link', 'Material PDF', 'Enlace PDF', 'Brochure', 'BROCHURE'],
+      ['PDF', 'Pdf', 'PDF link', 'Material PDF', 'Enlace PDF'],
       [/\bpdf\b/i]
     )).trim());
 
@@ -346,15 +323,10 @@
     };
   }
 
-  function makePrimaryHref(it) {
-    const custom = it.profileUrl;
-    if (custom) return { href: custom, external: isExternalHref(custom), kind: 'custom' };
-
-    if (!DETAIL_URL) return { href: '#', external: false, kind: 'none' };
-
+  function makeDetailHref(id) {
+    if (!DETAIL_URL) return '#';
     // Pasamos también el CSV para que /bridgeit/item/ funcione aunque se abra “directo”
-    const href = `${DETAIL_URL}?id=${encodeURIComponent(it.id)}&csv=${encodeURIComponent(CSV_URL)}`;
-    return { href, external: false, kind: 'detail' };
+    return `${DETAIL_URL}?id=${encodeURIComponent(id)}&csv=${encodeURIComponent(CSV_URL)}`;
   }
 
   // ---------- Render ----------
@@ -388,19 +360,12 @@
       const h = document.createElement('h3');
       h.className = 'name';
 
-      const primary = makePrimaryHref(it);
       const a = document.createElement('a');
-      a.href = primary.href;
+      a.href = makeDetailHref(it.id);
       a.textContent = it.name || '(sin nombre)';
       a.className = 'detail-link';
-
-      if (primary.external) {
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.title = 'Abrir en otra pestaña';
-      }
-
       h.appendChild(a);
+
       headLeft.appendChild(h);
 
       const pill = document.createElement('span');
@@ -410,28 +375,24 @@
       header.appendChild(headLeft);
       header.appendChild(pill);
 
-      // Texto visible: pitch (si existe) o resumen truncado
       const p = document.createElement('p');
       p.className = 'summary';
       const visibleText = it.pitch || it.summaryLong || '';
       p.textContent = truncate(visibleText, it.pitch ? 240 : 260);
       if (it.pitch) p.classList.add('summary--pitch');
 
-      // Chips (capacidad/temática + convocatorias)
+      // Chips SIN límite: todas las temáticas y convocatorias
       const chips = document.createElement('div');
       chips.className = 'chips';
 
-      const temMax = 2;
-      const conMax = 3;
-
-      for (const t of it.tematica.slice(0, temMax)) {
+      for (const t of it.tematica) {
         const s = document.createElement('span');
         s.className = 'tag tag--tem';
         s.textContent = t;
         chips.appendChild(s);
       }
 
-      for (const c of it.convo.slice(0, conMax)) {
+      for (const c of it.convo) {
         const s = document.createElement('span');
         s.className = 'tag tag--convo';
         s.textContent = c;
@@ -576,8 +537,7 @@
 
     root.querySelectorAll('.facet input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
 
-    const q = document.getElementById('q');
-    if (q) q.value = '';
+    if (els.q) els.q.value = '';
 
     state.lists.grupos?.search('');
     state.lists.empresas?.search('');
@@ -588,8 +548,8 @@
   }
 
   function updateCountAndEmpty() {
-    const ng = state.lists.grupos?.matchingItems?.length ?? 0;
-    const ne = state.lists.empresas?.matchingItems?.length ?? 0;
+    const ng = state.lists.grupos?.matchingItems?.length ?? (els.cardsGrupos?.children.length || 0);
+    const ne = state.lists.empresas?.matchingItems?.length ?? (els.cardsEmpresas?.children.length || 0);
     const n = ng + ne;
 
     els.count.textContent = String(n);
@@ -603,13 +563,10 @@
   async function init() {
     try {
       const rows = await loadCsvObjects(CSV_URL);
-
-      // Para que la ficha pueda reutilizarlo como fallback
       window.__MATCH_CSV__ = CSV_URL;
 
       const items = rows
         .map((r, i) => toItem(r, i))
-        // evita filas vacías
         .filter((x) => x.name || x.pitch || x.summaryLong);
 
       const grupos = items.filter(x => x.type === 'grupo');
@@ -620,22 +577,25 @@
 
       buildFacets(items);
 
-      // Incluimos campos extra en búsqueda (pitch + resumen completo)
       const valueNames = ['name', 'summary', 'pitch', 'full_summary', 'keywords_tematica', 'keywords_convo'];
 
-      state.lists.grupos = new List('col-grupos', { valueNames });
-      state.lists.empresas = new List('col-empresas', { valueNames });
+      // Importante: List.js falla si la lista está completamente vacía.
+      if (grupos.length) {
+        state.lists.grupos = new List('col-grupos', { valueNames });
+        state.lists.grupos.on('updated', updateCountAndEmpty);
+      }
+      if (empresas.length) {
+        state.lists.empresas = new List('col-empresas', { valueNames });
+        state.lists.empresas.on('updated', updateCountAndEmpty);
+      }
 
-      state.lists.grupos.on('updated', updateCountAndEmpty);
-      state.lists.empresas.on('updated', updateCountAndEmpty);
       updateCountAndEmpty();
 
       // Búsqueda global para ambas listas
-      const q = document.getElementById('q');
-      if (q) {
-        q.addEventListener('input', () => {
-          state.lists.grupos.search(q.value);
-          state.lists.empresas.search(q.value);
+      if (els.q) {
+        els.q.addEventListener('input', () => {
+          state.lists.grupos?.search(els.q.value);
+          state.lists.empresas?.search(els.q.value);
           applyFilters();
         });
       }
