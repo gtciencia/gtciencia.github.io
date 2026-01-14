@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Matching 
-permalink: /match/
+title: Bridge it! 
+permalink: /bridgeit/
 nav: true
 nav_order: 1
 ---
@@ -16,7 +16,7 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
      class="match-app"
      data-csv-url="https://docs.google.com/spreadsheets/d/e/2PACX-1vQeIaaWFgqIGzpKk4tOBTU0bAoE8A_Vwf01W4i-k7E8zJfOMVqhTVzffTaDmSIntZAF-b0yyyYv0b2S/pub?output=csv"
      data-form-url="https://forms.gle/yRAZqbp4tGaTmLaq7"
-     data-detail-url="{{ '/match/item/' | relative_url }}">
+     data-detail-url="{{ '/bridgeit/item/' | relative_url }}">
 
   <noscript>
     <p><strong>Esta página necesita JavaScript</strong> para cargar el directorio y aplicar filtros.</p>
@@ -87,5 +87,5 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
 <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
 
 <!-- Tu lógica -->
-<link rel="stylesheet" href="{{ '/assets/match/match.css' | relative_url }}">
-<script src="{{ '/assets/match/match.js' | relative_url }}"></script>
+<link rel="stylesheet" href="{{ '/assets/bridgeit/match.css' | relative_url }}">
+<script src="{{ '/assets/bridgeit/match.js' | relative_url }}"></script>
