@@ -48,9 +48,6 @@ Configura aquí tus URLs (Google Sheets en CSV + Google Form).
     <div class="block submit">
       <p class="submit-title">¿Quieres aparecer en el directorio?</p>
       <a id="formLink" class="submit-link" href="#" target="_blank" rel="noopener">Enviar ficha (Google Form)</a>
-      <p class="hint">
-        Nota: si incluyes “Subida de archivo” en Google Forms, suele requerir iniciar sesión con Google.
-      </p>
     </div>
   </aside>
 
